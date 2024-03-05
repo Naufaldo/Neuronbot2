@@ -1,4 +1,3 @@
-# Neuronbot2
 ## NeuronBot 2 in ROS1
 NeuronBot2 is the newest version of NeuronBot made by Adlink, which fully supports ROS1 and ROS2. 
 
@@ -78,7 +77,7 @@ Below document is the quick-start guide for simulation if you don't realy have a
    ```
    roslaunch neuronbot2_gazebo neuronbot2_world.launch world_model:=mememan_world.model
    ```
-   ![](neuronbot2//readme_resource/mememan_world.png)
+   ![](neuronbot2/readme_resource/mememan_world.png)
    * Phenix world
    ```
    roslaunch neuronbot2_gazebo neuronbot2_world.launch world_model:=phenix_world.model
