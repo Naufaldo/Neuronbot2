@@ -6,15 +6,21 @@ from geometry_msgs.msg import PoseStamped
 import numpy as np
 
 class FloodfillNavigation:
-    def __init__(self, map_size=(31, 31), max_position=5):
+    def __init__(self, map_size=(31, 31), max_position=5):  
         self.map_size = map_size
         self.max_position = max_position
-        self.map_grid = np.zeros(map_size, dtype=bool)
+        self.map_grid = np.zeros(map_size)
         self.visited = np.zeros(map_size, dtype=bool)
 
     def update_discovered_area(self, discovered_area):
-        self.map_grid |= discovered_area
-        self.visited |= discovered_area
+        # Resize the discovered_area to match the map size
+        resized_area = self.resize_discovered_area(discovered_area)
+        self.map_grid = np.logical_or(self.map_grid, resized_area)
+        self.visited = np.logical_or(self.visited, resized_area)
+
+    def resize_discovered_area(self, discovered_area):
+        # Resize the discovered_area to match the map size
+        return np.array(discovered_area, dtype=bool)[:self.map_size[0], :self.map_size[1]]
 
     def get_navigation_target(self):
         indices = np.transpose(np.nonzero(~self.visited))
@@ -34,8 +40,8 @@ def map_callback(data, navigator):
     map_data = data.data  
     map_array = np.array(map_data).reshape((data.info.height, data.info.width))
 
-    downsample_factor = 10
-    downsampled_map = map_array[::downsample_factor, ::downsample_factor] > 0
+    downsample_factor = 2
+    downsampled_map = map_array[::downsample_factor, ::downsample_factor]
 
     navigator.update_discovered_area(downsampled_map)
     target_position = navigator.get_navigation_target()
@@ -52,7 +58,7 @@ def map_callback(data, navigator):
 
         goal_pub.publish(goal_pose)
     else:
-        rospy.loginfo("Exploration complete. No target to navigate.")
+        rospy.loginfo("All areas visited. No target to navigate.")
 
 def exploration_node():
     rospy.init_node('exploration_node', anonymous=True)
