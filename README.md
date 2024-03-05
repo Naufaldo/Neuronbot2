@@ -60,7 +60,7 @@ Now we support the following version, you can checkout to these branch.
    source devel/setup.bash
    ```
 ## Simulation
-![](readme_resource/NueronBot2_sim.jpg)
+![](neuronbot2/readme_resource/NueronBot2_sim.jpg)
 
 Below document is the quick-start guide for simulation if you don't realy have a NeuronBot.
 
@@ -78,12 +78,12 @@ Below document is the quick-start guide for simulation if you don't realy have a
    ```
    roslaunch neuronbot2_gazebo neuronbot2_world.launch world_model:=mememan_world.model
    ```
-   ![](./readme_resource/mememan_world.png)
+   ![](neuronbot2//readme_resource/mememan_world.png)
    * Phenix world
    ```
    roslaunch neuronbot2_gazebo neuronbot2_world.launch world_model:=phenix_world.model
    ```
-   ![](readme_resource/phenix_world.png)
+   ![](neuronbot2/readme_resource/phenix_world.png)
 3. Teleop it in the world
 
     Users are able to control the NeuronBot2 with the following rosnode. Run it with the other terminal.
@@ -91,23 +91,23 @@ Below document is the quick-start guide for simulation if you don't realy have a
    source /opt/ros/melodic/setup.bash
    rosrun teleop_twist_keyboard teleop_twist_keyboard.py
    ```
-   ![](readme_resource/teleop.png)
+   ![](neuronbot2/readme_resource/teleop.png)
 ### SLAM the world
 1. Launch SLAM as well as Rviz while the Gazebo simulation is running.
    ```
    roslaunch neuronbot2_slam gmapping.launch open_rviz:=true 
    ```
-    ![](readme_resource/slam_rviz.png)
+    ![](neuronbot2/readme_resource/slam_rviz.png)
 2. Teleop it to explore the world
    ```
    rosrun teleop_twist_keyboard teleop_twist_keyboard.py
    ```
-   ![](readme_resource/slam_teleop_8x.gif)
+   ![](neuronbot2/readme_resource/slam_teleop_8x.gif)
 3. Explore the world with move_base while SLAM with gmapping
    ```
    roslaunch neuronbot2_nav navigation.launch
    ```
-   ![](readme_resource/slam_move_base_8x.gif)
+   ![](neuronbot2/readme_resource/slam_move_base_8x.gif)
 4. Save the map
    ```
    source ~/neuronbot2_ros1_ws/devel/setup.bash
@@ -132,17 +132,17 @@ Once users obtain the map, the pgm file & yaml file, navigation is good to go.
    
    You can also change the default map file in neuronbot2_nav/launch/bringup.launch
 
-    ![](readme_resource/mememan_launch_nav.png)
+    ![](neuronbot2/readme_resource/mememan_launch_nav.png)
 2. Set Estimation
    
    Click "2D Pose Estimate", and set estimation to the approximate location of robot on the map.
 
-   ![](readme_resource/nav_estimate.gif)
+   ![](neuronbot2/readme_resource/nav_estimate.gif)
 3. Set Goal
 
    Click "2D Nav Goal", and set goal to any free space on the map.
    
-   ![](readme_resource/nav_set_goal.gif)
+   ![](neuronbot2/readme_resource/nav_set_goal.gif)
 
 ### Other tips
 1. Speed up simulation
