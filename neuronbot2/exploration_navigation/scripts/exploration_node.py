@@ -1,10 +1,9 @@
-# scripts/exploration_node.py
-
 #!/usr/bin/env python
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
 from exploration_navigation.waterfill_navigation import WaterfillNavigation
+import numpy as np
 
 def map_callback(data):
     # Process the map data
