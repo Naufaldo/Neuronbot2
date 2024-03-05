@@ -1,0 +1,4 @@
+<launch>
+  <!-- Start the navigation node -->
+  <node name="waterfill_navigation_node" pkg="waterfill_navigation" type="waterfill_navigation_node.py" output="screen" />
+</launch>
