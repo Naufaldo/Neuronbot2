@@ -2,9 +2,10 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped
 from actionlib_msgs.msg import GoalStatusArray
 import numpy as np
+import matplotlib.pyplot as plt
 
 class FloodfillNavigation:
     def __init__(self):
@@ -12,7 +13,8 @@ class FloodfillNavigation:
         self.max_position = None
         self.map_grid = None
         self.visited = None
-        self.previous_goal_status = None
+        self.reached_goal = True
+        self.goal_path = []
 
     def update_discovered_area(self, discovered_area):
         if self.map_size is None:
@@ -63,6 +65,14 @@ class FloodfillNavigation:
         return [scaled_x, scaled_y]
 
 def map_callback(data, navigator):
+    global last_map_data
+    if data is None:
+        rospy.logerr("Received NoneType data. Ignoring map update.")
+        return
+
+    if last_map_data is None:
+        last_map_data = OccupancyGrid()  # Initialize last_map_data with an empty OccupancyGrid message
+
     map_data = data.data
     map_array = np.array(map_data).reshape((data.info.height, data.info.width))
 
@@ -79,7 +89,7 @@ def map_callback(data, navigator):
     navigator.update_discovered_area(downsampled_map)
     target_position = navigator.get_navigation_target()
 
-    if target_position is not None:
+    if target_position is not None and navigator.reached_goal:
         rospy.loginfo("Navigation target: {}".format(target_position))
 
         goal_pose = PoseStamped()
@@ -90,31 +100,48 @@ def map_callback(data, navigator):
         goal_pose.pose.orientation.w = 1.0
 
         goal_pub.publish(goal_pose)
-        visited_pub.publish(Point(x=target_position[0], y=target_position[1], z=0))  # Publish visited target
+        navigator.reached_goal = False
     else:
         rospy.loginfo("Exploration complete. No target to navigate.")
 
-def goal_status_callback(data, navigator):
-    if data.status_list:
-        current_goal_status = data.status_list[-1].status
-        # Check if the goal status has changed
-        if current_goal_status != navigator.previous_goal_status:
-            navigator.previous_goal_status = current_goal_status
-            # If the goal status indicates success, plan a new navigation target
-            if current_goal_status == 3:  # SUCCEEDED
-                map_callback(last_map_data, navigator)
+    # Plot the current goal path
+    if target_position is not None:
+        navigator.goal_path.append(target_position)
+        plot_goal_path(navigator.goal_path)
+
+def goal_result_callback(data, navigator):
+    if data.status.status == GoalStatus.SUCCEEDED:
+        rospy.loginfo("Goal reached. Planning new navigation target.")
+        navigator.reached_goal = True
+        map_callback(last_map_data, navigator)
+
+def plot_goal_path(goal_path):
+    plt.figure()
+    plt.title("Goal Path")
+    plt.xlabel("X Position")
+    plt.ylabel("Y Position")
+    for point in goal_path:
+        plt.scatter(point[0], point[1], c='blue', marker='o')
+    plt.grid()
+    plt.draw()
+    plt.pause(0.01)
 
 def exploration_node():
     rospy.init_node('exploration_node', anonymous=True)
     navigator = FloodfillNavigation()
     rospy.Subscriber('/map', OccupancyGrid, lambda data: map_callback(data, navigator))
-    rospy.Subscriber('/move_base/status', GoalStatusArray, lambda data: goal_status_callback(data, navigator))
+    rospy.Subscriber('/move_base/result', GoalStatusArray, lambda data: goal_result_callback(data, navigator))
+
+    # Trigger exploration upon startup
+    rospy.loginfo("Triggering exploration...")
+    map_callback(last_map_data, navigator)
+
     rospy.spin()
 
 if __name__ == '__main__':
     try:
+        last_map_data = None
         goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
-        visited_pub = rospy.Publisher('/visited_targets', Point, queue_size=10)  # Publisher for visited targets
         exploration_node()
     except rospy.ROSInterruptException:
         pass

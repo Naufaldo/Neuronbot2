@@ -2,7 +2,7 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped
 from actionlib_msgs.msg import GoalStatusArray
 import numpy as np
 
@@ -90,7 +90,6 @@ def map_callback(data, navigator):
         goal_pose.pose.orientation.w = 1.0
 
         goal_pub.publish(goal_pose)
-        visited_pub.publish(Point(x=target_position[0], y=target_position[1], z=0))  # Publish visited target
     else:
         rospy.loginfo("Exploration complete. No target to navigate.")
 
@@ -114,7 +113,6 @@ def exploration_node():
 if __name__ == '__main__':
     try:
         goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
-        visited_pub = rospy.Publisher('/visited_targets', Point, queue_size=10)  # Publisher for visited targets
         exploration_node()
     except rospy.ROSInterruptException:
         pass
