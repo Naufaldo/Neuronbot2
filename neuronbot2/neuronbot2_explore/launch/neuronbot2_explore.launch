@@ -13,7 +13,7 @@ Software License Agreement (BSD)
     <!-- Should be less than sensor range -->
     <param name="goal_aliasing" value="2.0"/>
     
-    <rosparam file="$(find omni_base_explore)/cfg/explore_costmap_params.yaml" command="load"/>
+    <rosparam file="$(find neuronbot2_explore)/cfg/explore_costmap_params.yaml" command="load"/>
 
   </node>
 

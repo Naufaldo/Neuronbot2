@@ -8,12 +8,12 @@ Software License Agreement (BSD)
 <launch>
 
   <!--- Run gmapping -->
-  <include file="$(find omni_base_explore)/launch/omni_exp_gmapping.launch" />
+  <include file="$(find neuronbot2_slam)/launch/gmapping.launch" />
 
   <!--- Run Move Base -->
-  <include file="$(find omni_base_explore)/launch/omni_exp_movebase.launch" />
+  <include file="$(find neuronbot2_explore)/launch/neuronbot2_movebase.launch" />
 
   <!-- Run Frontier Exploration -->
-  <include file="$(find omni_base_explore)/launch/omni_exp_explore.launch" />
+  <include file="$(find neuronbot2_explore)/launch/neuronbot2_explore.launch" />
 
 </launch>
