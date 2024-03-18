@@ -3,7 +3,7 @@
   <!-- Modify from $(find gazebo_ros)/launch/empty_world.launch -->
 
   <!-- these are the arguments you can pass this launch file, for example paused:=true -->
-  <arg name="world_model" default="zee_floor.model" />
+  <arg name="world_model" default="zee_floor2.model" />
   <arg name="paused" default="false"/>
   <arg name="use_sim_time" default="true"/>
   <arg name="extra_gazebo_args" default=""/>
