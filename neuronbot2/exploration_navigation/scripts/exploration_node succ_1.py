@@ -40,48 +40,23 @@ class FloodfillNavigation:
             rospy.loginfo("All areas visited. No target to navigate.")
             return None
 
-        # Print visited status of each cell for debugging
-        for i in range(self.map_size[0]):
-            for j in range(self.map_size[1]):
-                rospy.loginfo("Cell ({},{}): Visited = {}".format(i, j, self.visited[i][j]))
+        # Calculate distance transform to find closest unvisited areas
+        distance_map = distance_transform_edt(~self.visited)
 
-        # Find the next unvisited cell in a systematic grid-like pattern
-        for i in range(self.map_size[0]):
-            for j in range(self.map_size[1]):
-                if not self.visited[i][j]:
-                    return self.scale_position([i, j])
+        # Find the closest unvisited cell to the robot
+        closest_unvisited_idx = np.unravel_index(np.argmax(distance_map), distance_map.shape)
+        closest_unvisited_distance = distance_map[closest_unvisited_idx]
 
-        # If all cells are visited, return None
-        rospy.loginfo("All areas visited. No target to navigate.")
-        return None
+        # If the closest unvisited cell is too far, select a random unvisited cell
+        if closest_unvisited_distance > self.map_size[0] * self.map_size[1]:
+            rospy.loginfo("Closest unvisited cell is too far. Selecting a random unvisited cell.")
+            unvisited_indices = np.transpose(np.nonzero(~self.visited))
+            idx = np.random.randint(len(unvisited_indices))
+            target_idx = unvisited_indices[idx]
+        else:
+            target_idx = closest_unvisited_idx
 
-
-    # def get_navigation_target(self, robot_position):
-    #     if self.map_size is None:
-    #         rospy.logerr("Map size is not yet set. Cannot determine navigation target.")
-    #         return None
-
-    #     if np.all(self.visited):
-    #         rospy.loginfo("All areas visited. No target to navigate.")
-    #         return None
-
-    #     # Calculate distance transform to find closest unvisited areas
-    #     distance_map = distance_transform_edt(~self.visited)
-
-    #     # Find the closest unvisited cell to the robot
-    #     closest_unvisited_idx = np.unravel_index(np.argmax(distance_map), distance_map.shape)
-    #     closest_unvisited_distance = distance_map[closest_unvisited_idx]
-
-    #     # If the closest unvisited cell is too far, select a random unvisited cell
-    #     if closest_unvisited_distance > self.map_size[0] * self.map_size[1]:
-    #         rospy.loginfo("Closest unvisited cell is too far. Selecting a random unvisited cell.")
-    #         unvisited_indices = np.transpose(np.nonzero(~self.visited))
-    #         idx = np.random.randint(len(unvisited_indices))
-    #         target_idx = unvisited_indices[idx]
-    #     else:
-    #         target_idx = closest_unvisited_idx
-
-    #     return self.scale_position(target_idx)
+        return self.scale_position(target_idx)
 
     def scale_position(self, position):
         if self.max_position is None:
@@ -100,7 +75,7 @@ def map_callback(data, navigator, robot_position):
 
     if navigator.map_size is None:
         navigator.map_size = (map_array.shape[0], map_array.shape[1])
-        navigator.max_position = 2  # Default max position, adjust as needed
+        navigator.max_position = 5  # Default max position, adjust as needed
         navigator.map_grid = np.zeros(navigator.map_size, dtype=bool)
         navigator.visited = np.zeros(navigator.map_size, dtype=bool)
 

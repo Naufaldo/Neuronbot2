@@ -2,9 +2,9 @@
 
 import rospy
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
+from actionlib_msgs.msg import GoalStatusArray
 import numpy as np
-from scipy.ndimage import distance_transform_edt
 
 class FloodfillNavigation:
     def __init__(self):
@@ -12,6 +12,7 @@ class FloodfillNavigation:
         self.max_position = None
         self.map_grid = None
         self.visited = None
+        self.previous_goal_status = None
 
     def update_discovered_area(self, discovered_area):
         if self.map_size is None:
@@ -31,57 +32,24 @@ class FloodfillNavigation:
         self.map_grid |= discovered_area
         self.visited |= discovered_area
 
-    def get_navigation_target(self, robot_position):
+    def get_navigation_target(self):
         if self.map_size is None:
             rospy.logerr("Map size is not yet set. Cannot determine navigation target.")
             return None
 
-        if np.all(self.visited):
+        # Check if there are any undiscovered areas left
+        if np.any(~self.visited):
+            # Get indices of all undiscovered areas
+            undiscovered_indices = np.transpose(np.nonzero(~self.visited))
+            
+            # Select a random undiscovered position as the navigation target
+            idx = np.random.randint(len(undiscovered_indices))
+            undiscovered_position = undiscovered_indices[idx]
+
+            return self.scale_position(undiscovered_position)
+        else:
             rospy.loginfo("All areas visited. No target to navigate.")
             return None
-
-        # Print visited status of each cell for debugging
-        for i in range(self.map_size[0]):
-            for j in range(self.map_size[1]):
-                rospy.loginfo("Cell ({},{}): Visited = {}".format(i, j, self.visited[i][j]))
-
-        # Find the next unvisited cell in a systematic grid-like pattern
-        for i in range(self.map_size[0]):
-            for j in range(self.map_size[1]):
-                if not self.visited[i][j]:
-                    return self.scale_position([i, j])
-
-        # If all cells are visited, return None
-        rospy.loginfo("All areas visited. No target to navigate.")
-        return None
-
-
-    # def get_navigation_target(self, robot_position):
-    #     if self.map_size is None:
-    #         rospy.logerr("Map size is not yet set. Cannot determine navigation target.")
-    #         return None
-
-    #     if np.all(self.visited):
-    #         rospy.loginfo("All areas visited. No target to navigate.")
-    #         return None
-
-    #     # Calculate distance transform to find closest unvisited areas
-    #     distance_map = distance_transform_edt(~self.visited)
-
-    #     # Find the closest unvisited cell to the robot
-    #     closest_unvisited_idx = np.unravel_index(np.argmax(distance_map), distance_map.shape)
-    #     closest_unvisited_distance = distance_map[closest_unvisited_idx]
-
-    #     # If the closest unvisited cell is too far, select a random unvisited cell
-    #     if closest_unvisited_distance > self.map_size[0] * self.map_size[1]:
-    #         rospy.loginfo("Closest unvisited cell is too far. Selecting a random unvisited cell.")
-    #         unvisited_indices = np.transpose(np.nonzero(~self.visited))
-    #         idx = np.random.randint(len(unvisited_indices))
-    #         target_idx = unvisited_indices[idx]
-    #     else:
-    #         target_idx = closest_unvisited_idx
-
-    #     return self.scale_position(target_idx)
 
     def scale_position(self, position):
         if self.max_position is None:
@@ -94,13 +62,13 @@ class FloodfillNavigation:
         scaled_y = position[0] * y_scale
         return [scaled_x, scaled_y]
 
-def map_callback(data, navigator, robot_position):
+def map_callback(data, navigator):
     map_data = data.data
     map_array = np.array(map_data).reshape((data.info.height, data.info.width))
 
     if navigator.map_size is None:
         navigator.map_size = (map_array.shape[0], map_array.shape[1])
-        navigator.max_position = 2  # Default max position, adjust as needed
+        navigator.max_position = 5  # Default max position, adjust as needed
         navigator.map_grid = np.zeros(navigator.map_size, dtype=bool)
         navigator.visited = np.zeros(navigator.map_size, dtype=bool)
 
@@ -109,7 +77,7 @@ def map_callback(data, navigator, robot_position):
     downsampled_map = map_array[::downsample_factor, ::downsample_factor] > 0
 
     navigator.update_discovered_area(downsampled_map)
-    target_position = navigator.get_navigation_target(robot_position)
+    target_position = navigator.get_navigation_target()
 
     if target_position is not None:
         rospy.loginfo("Navigation target: {}".format(target_position))
@@ -122,19 +90,31 @@ def map_callback(data, navigator, robot_position):
         goal_pose.pose.orientation.w = 1.0
 
         goal_pub.publish(goal_pose)
+        visited_pub.publish(Point(x=target_position[0], y=target_position[1], z=0))  # Publish visited target
     else:
         rospy.loginfo("Exploration complete. No target to navigate.")
+
+def goal_status_callback(data, navigator):
+    if data.status_list:
+        current_goal_status = data.status_list[-1].status
+        # Check if the goal status has changed
+        if current_goal_status != navigator.previous_goal_status:
+            navigator.previous_goal_status = current_goal_status
+            # If the goal status indicates success, plan a new navigation target
+            if current_goal_status == 3:  # SUCCEEDED
+                map_callback(last_map_data, navigator)
 
 def exploration_node():
     rospy.init_node('exploration_node', anonymous=True)
     navigator = FloodfillNavigation()
-    robot_position = [0, 0]  # Initialize with robot's starting position
-    rospy.Subscriber('/map', OccupancyGrid, lambda data: map_callback(data, navigator, robot_position))
+    rospy.Subscriber('/map', OccupancyGrid, lambda data: map_callback(data, navigator))
+    rospy.Subscriber('/move_base/status', GoalStatusArray, lambda data: goal_status_callback(data, navigator))
     rospy.spin()
 
 if __name__ == '__main__':
     try:
         goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=1)
+        visited_pub = rospy.Publisher('/visited_targets', Point, queue_size=10)  # Publisher for visited targets
         exploration_node()
     except rospy.ROSInterruptException:
         pass
